@@ -1,17 +1,21 @@
 """
 main.py — Ponto de entrada do projeto TCC
-Coleta Seletiva com Algoritmos de AGM — Heliópolis, Belo Horizonte (MG)
+Coleta Seletiva com Algoritmos de AGM
 
 Autor: Davi de Oliveira Santos
 Orientador: Bernardo Jeunon de Alencar
 Instituição: PUC Minas — Sistemas de Informação
 
 Execução:
-    python main.py
+    python3 main.py
+
+O bairro e os pontos de coleta são configurados em config.toml.
+A matriz de distâncias é gerada automaticamente via OSRM na 1ª execução
+e cacheada em cache/{slug}/matriz_distancias.csv.
 
 Outputs gerados em:
-    outputs/grafos/   → imagens PNG
-    outputs/mapas/    → mapa interativo HTML
+    outputs/{slug}/grafos/   → imagens PNG
+    outputs/{slug}/mapas/    → mapa interativo HTML
 """
 
 import os
@@ -21,7 +25,9 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(BASE_DIR, "src"))
 
-from data_loader import load_points, load_distance_matrix, build_edge_list
+from config_loader import load_config, get_points, get_bairro_label, get_slug, load_or_build_matrix
+from data_loader import build_edge_list
+from router import download_or_load_street_network, snap_points_to_network
 from graph_builder import build_networkx_graph, get_adjacency_list
 from kruskal import kruskal_mst
 from prim import prim_mst
@@ -52,25 +58,27 @@ from visualizer_map import (
 import networkx as nx
 
 
-# ─── Caminhos ────────────────────────────────────────────────────────────────
-DATA_DIR    = os.path.join(BASE_DIR, "data")
-OUTPUT_GRAFOS = os.path.join(BASE_DIR, "outputs", "grafos")
-OUTPUT_MAPAS  = os.path.join(BASE_DIR, "outputs", "mapas")
-
-os.makedirs(OUTPUT_GRAFOS, exist_ok=True)
-os.makedirs(OUTPUT_MAPAS, exist_ok=True)
-
-
 def main():
+    # ─── Carregar configuração ────────────────────────────────────
+    CONFIG_PATH = os.path.join(BASE_DIR, "config.toml")
+    cfg          = load_config(CONFIG_PATH)
+    points       = get_points(cfg)
+    bairro_label = get_bairro_label(cfg)
+    slug         = get_slug(cfg)
+
+    OUTPUT_GRAFOS = os.path.join(BASE_DIR, "outputs", slug, "grafos")
+    OUTPUT_MAPAS  = os.path.join(BASE_DIR, "outputs", slug, "mapas")
+    os.makedirs(OUTPUT_GRAFOS, exist_ok=True)
+    os.makedirs(OUTPUT_MAPAS, exist_ok=True)
+
     print("=" * 60)
     print("TCC — Coleta Seletiva com Algoritmos de AGM")
-    print("Heliópolis, Belo Horizonte (MG)")
+    print(bairro_label)
     print("=" * 60)
 
     # ─── 1. Carregar dados ────────────────────────────────────────
     print("\n[1/6] Carregando dados...")
-    points = load_points(os.path.join(DATA_DIR, "pontos_coleta.csv"))
-    matrix = load_distance_matrix(os.path.join(DATA_DIR, "matriz_distancias.csv"))
+    matrix = load_or_build_matrix(cfg, BASE_DIR)
     edges  = build_edge_list(matrix)
     nodes  = [p["id"] for p in points]
 
@@ -91,10 +99,10 @@ def main():
     mst_k, peso_k, steps_k = kruskal_mst(edges, nodes)
     print(f"  Kruskal — peso AGM: {peso_k} m ({peso_k/1000:.3f} km)")
 
-    mst_p, peso_p, steps_p = prim_mst(adj, start_node="P01")
+    start_node = points[0]["id"]
+    mst_p, peso_p, steps_p = prim_mst(adj, start_node=start_node)
     print(f"  Prim    — peso AGM: {peso_p} m ({peso_p/1000:.3f} km)")
 
-    # Validação: Kruskal e Prim devem produzir AGMs com o mesmo peso
     assert peso_k == peso_p, (
         f"ERRO: pesos divergem! Kruskal={peso_k} m, Prim={peso_p} m\n"
         "Verifique a matriz de distâncias (deve ser simétrica)."
@@ -113,54 +121,67 @@ def main():
     print_metrics_table(naive_m, mst_m, savings)
 
     # ─── 5. Gerar visualizações estáticas ─────────────────────────
-    print("\n[5/6] Gerando gráficos...")
+    print("\n[5/7] Gerando gráficos...")
 
     plot_complete_graph(
         G,
         os.path.join(OUTPUT_GRAFOS, "grafo_completo.png"),
+        bairro_label=bairro_label,
     )
     plot_mst_highlighted(
         G, mst_k, "Kruskal",
         os.path.join(OUTPUT_GRAFOS, "agm_kruskal.png"),
+        bairro_label=bairro_label,
     )
     plot_mst_highlighted(
         G, mst_p, "Prim",
         os.path.join(OUTPUT_GRAFOS, "agm_prim.png"),
+        bairro_label=bairro_label,
     )
     plot_kruskal_steps(
         steps_k, G, mst_k,
         os.path.join(OUTPUT_GRAFOS, "kruskal_passos.png"),
+        bairro_label=bairro_label,
     )
     plot_prim_steps(
         steps_p, G,
         os.path.join(OUTPUT_GRAFOS, "prim_passos.png"),
+        bairro_label=bairro_label,
     )
     plot_metrics_comparison(
         naive_m, mst_m, savings,
         os.path.join(OUTPUT_GRAFOS, "comparacao_metricas.png"),
+        bairro_label=bairro_label,
     )
 
-    # ─── 6. Gerar mapa interativo ─────────────────────────────────
-    print("\n[6/6] Gerando mapa interativo...")
-    m = create_base_map(points)
+    # ─── 6. Malha viária real (OSMnx) ────────────────────────────
+    print("\n[6/7] Baixando malha viária (OpenStreetMap)...")
+    CACHE_STREETS = os.path.join(BASE_DIR, "cache", slug, "street_network.graphml")
+    G_streets = download_or_load_street_network(points, CACHE_STREETS)
+    points    = snap_points_to_network(G_streets, points)
+    print(f"  Nós na malha: {G_streets.number_of_nodes()} | Arestas: {G_streets.number_of_edges()}")
+
+    # ─── 7. Gerar mapa interativo ─────────────────────────────────
+    print("\n[7/7] Gerando mapa interativo...")
+    m = create_base_map(points, bairro_label=bairro_label)
     add_points_layer(m, points)
     add_complete_graph_layer(m, matrix, points)
-    add_mst_layer(m, mst_k, points, algo_name="Kruskal", color="#1B5E20")
-    add_mst_layer(m, mst_p, points, algo_name="Prim",    color="#0D47A1")
-    add_naive_route_layer(m, points, matrix)
+    add_mst_layer(m, mst_k, points, algo_name="Kruskal", color="#1B5E20", G_streets=G_streets)
+    add_mst_layer(m, mst_p, points, algo_name="Prim",    color="#0D47A1", G_streets=G_streets)
+    add_naive_route_layer(m, points, matrix, G_streets=G_streets)
     add_legend(m)
-    save_map(m, os.path.join(OUTPUT_MAPAS, "mapa_heliopolis.html"))
+    save_map(m, os.path.join(OUTPUT_MAPAS, f"mapa_{slug}.html"))
 
     # ─── Resumo final ─────────────────────────────────────────────
     print("\n" + "=" * 60)
     print("CONCLUÍDO! Arquivos gerados:")
-    print(f"  outputs/grafos/grafo_completo.png")
-    print(f"  outputs/grafos/agm_kruskal.png")
-    print(f"  outputs/grafos/agm_prim.png")
-    print(f"  outputs/grafos/kruskal_passos.png")
-    print(f"  outputs/grafos/prim_passos.png")
-    print(f"  outputs/grafos/comparacao_metricas.png")
-    print(f"  outputs/mapas/mapa_heliopolis.html")
+    print(f"  outputs/{slug}/grafos/grafo_completo.png")
+    print(f"  outputs/{slug}/grafos/agm_kruskal.png")
+    print(f"  outputs/{slug}/grafos/agm_prim.png")
+    print(f"  outputs/{slug}/grafos/kruskal_passos.png")
+    print(f"  outputs/{slug}/grafos/prim_passos.png")
+    print(f"  outputs/{slug}/grafos/comparacao_metricas.png")
+    print(f"  outputs/{slug}/mapas/mapa_{slug}.html")
     print("=" * 60)
 
 

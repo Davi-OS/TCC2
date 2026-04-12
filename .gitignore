@@ -1,0 +1,24 @@
+# Cache gerado automaticamente
+cache/
+
+# Outputs gerados
+outputs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

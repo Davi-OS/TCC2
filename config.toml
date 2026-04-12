@@ -1,0 +1,88 @@
+# Configuração do bairro para análise de coleta seletiva com AGM.
+# Para testar outro bairro: altere esta seção e execute python3 main.py
+# A matriz de distâncias será gerada automaticamente via OSRM na 1ª execução.
+
+[bairro]
+nome   = "Heliópolis"
+cidade = "Belo Horizonte, MG"
+slug   = "heliopolis"   # usado em nomes de pasta e arquivo (sem acentos)
+
+[[bairro.pontos]]
+id        = "P01"
+nome      = "Praça de Heliópolis"
+latitude  = -20.0540
+longitude = -44.0520
+tipo      = "praça"
+descricao = "Centro do bairro - ponto de referência principal"
+
+[[bairro.pontos]]
+id        = "P02"
+nome      = "UPA Barreiro"
+latitude  = -20.0510
+longitude = -44.0550
+tipo      = "saude"
+descricao = "Unidade de Pronto Atendimento - alta circulação de pessoas"
+
+[[bairro.pontos]]
+id        = "P03"
+nome      = "Escola Municipal Pe. João"
+latitude  = -20.0570
+longitude = -44.0490
+tipo      = "escola"
+descricao = "Escola municipal - geração de resíduos recicláveis"
+
+[[bairro.pontos]]
+id        = "P04"
+nome      = "Mercado Popular Heliópolis"
+latitude  = -20.0520
+longitude = -44.0480
+tipo      = "comercio"
+descricao = "Mercado local - grande geração de embalagens"
+
+[[bairro.pontos]]
+id        = "P05"
+nome      = "Igreja Nossa Senhora Aparecida"
+latitude  = -20.0560
+longitude = -44.0560
+tipo      = "religioso"
+descricao = "Igreja - ponto de encontro comunitário"
+
+[[bairro.pontos]]
+id        = "P06"
+nome      = "Terminal de Ônibus Barreiro"
+latitude  = -20.0490
+longitude = -44.0520
+tipo      = "transporte"
+descricao = "Terminal de transporte público - alta circulação"
+
+[[bairro.pontos]]
+id        = "P07"
+nome      = "Centro Comunitário Heliópolis"
+latitude  = -20.0590
+longitude = -44.0530
+tipo      = "comunitario"
+descricao = "Centro comunitário - reuniões e eventos locais"
+
+[[bairro.pontos]]
+id        = "P08"
+nome      = "Posto de Saúde Heliópolis"
+latitude  = -20.0530
+longitude = -44.0500
+tipo      = "saude"
+descricao = "Unidade básica de saúde - equipamento público"
+
+[[bairro.pontos]]
+id        = "P09"
+nome      = "Quadra Poliesportiva"
+latitude  = -20.0550
+longitude = -44.0490
+tipo      = "esporte"
+descricao = "Área de lazer e esporte - grande circulação nos fins de semana"
+
+[[bairro.pontos]]
+id        = "P10"
+nome      = "Supermercado BH Barreiro"
+latitude  = -20.0510
+longitude = -44.0530
+tipo      = "comercio"
+descricao = "Supermercado - principal gerador de embalagens do bairro"

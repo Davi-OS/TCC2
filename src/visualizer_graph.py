@@ -39,7 +39,7 @@ def _node_colors(G: nx.Graph) -> list:
     return [TIPO_CORES.get(G.nodes[n]["tipo"], COR_PADRAO) for n in G.nodes()]
 
 
-def plot_complete_graph(G: nx.Graph, output_path: str) -> None:
+def plot_complete_graph(G: nx.Graph, output_path: str, bairro_label: str = "") -> None:
     """
     Desenha o grafo completo com todos os 10 nós e 45 arestas.
     Os pesos das arestas são exibidos em metros.
@@ -64,8 +64,7 @@ def plot_complete_graph(G: nx.Graph, output_path: str) -> None:
     ax.legend(handles=patches, loc="lower left", fontsize=8, title="Tipo de ponto")
 
     ax.set_title(
-        "Grafo Completo — Sistema de Coleta Seletiva Proposto\n"
-        "Heliópolis, Belo Horizonte (MG)",
+        f"Grafo Completo — Sistema de Coleta Seletiva Proposto\n{bairro_label}",
         fontsize=13, fontweight="bold", pad=15,
     )
     ax.set_xlabel("Longitude")
@@ -82,6 +81,7 @@ def plot_mst_highlighted(
     mst_edges: list[tuple],
     algo_name: str,
     output_path: str,
+    bairro_label: str = "",
 ) -> None:
     """
     Desenha a AGM em destaque sobre o grafo completo (fundo cinza).
@@ -105,11 +105,11 @@ def plot_mst_highlighted(
     mst_edge_labels = {(u, v): mst_label[(u, v)] for u, v in mst_only if (u, v) in mst_label}
     nx.draw_networkx_edge_labels(G, pos, mst_edge_labels, font_size=8, font_color="#1B5E20", ax=ax)
 
-    ax.set_title(
-        f"Árvore Geradora Mínima — Algoritmo de {algo_name}\n"
-        f"Peso total da AGM: {mst_weight} m  |  Rota estimada: {mst_weight * 2} m",
-        fontsize=13, fontweight="bold", pad=15,
-    )
+    titulo = f"Árvore Geradora Mínima — Algoritmo de {algo_name}\n"
+    titulo += f"Peso total da AGM: {mst_weight} m  |  Rota estimada: {mst_weight * 2} m"
+    if bairro_label:
+        titulo += f"\n{bairro_label}"
+    ax.set_title(titulo, fontsize=13, fontweight="bold", pad=15)
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
     ax.grid(True, alpha=0.2)
@@ -131,6 +131,7 @@ def plot_kruskal_steps(
     G: nx.Graph,
     mst_edges: list[tuple],
     output_path: str,
+    bairro_label: str = "",
 ) -> None:
     """
     Grid de painéis mostrando a evolução do Kruskal passo a passo.
@@ -207,11 +208,11 @@ def plot_kruskal_steps(
     for idx in range(n_steps, len(axes)):
         axes[idx].set_visible(False)
 
-    fig.suptitle(
-        "Algoritmo de Kruskal — Evolução Passo a Passo\n"
-        "(Verde escuro = nova aresta aceita | Verde claro = AGM acumulada | Vermelho = aresta rejeitada)",
-        fontsize=12, fontweight="bold", y=1.01,
-    )
+    suptitle = "Algoritmo de Kruskal — Evolução Passo a Passo\n"
+    suptitle += "(Verde escuro = nova aresta aceita | Verde claro = AGM acumulada | Vermelho = aresta rejeitada)"
+    if bairro_label:
+        suptitle += f"\n{bairro_label}"
+    fig.suptitle(suptitle, fontsize=12, fontweight="bold", y=1.01)
     plt.tight_layout()
     plt.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close()
@@ -222,6 +223,7 @@ def plot_prim_steps(
     execution_steps: list[dict],
     G: nx.Graph,
     output_path: str,
+    bairro_label: str = "",
 ) -> None:
     """
     Grid de painéis mostrando a evolução do Prim passo a passo.
@@ -283,11 +285,11 @@ def plot_prim_steps(
     for idx in range(n_steps, len(axes)):
         axes[idx].set_visible(False)
 
-    fig.suptitle(
-        "Algoritmo de Prim — Evolução Passo a Passo\n"
-        "(Verde escuro = novo nó adicionado | Verde claro = AGM acumulada | Cinza = não visitado)",
-        fontsize=12, fontweight="bold", y=1.01,
-    )
+    suptitle = "Algoritmo de Prim — Evolução Passo a Passo\n"
+    suptitle += "(Verde escuro = novo nó adicionado | Verde claro = AGM acumulada | Cinza = não visitado)"
+    if bairro_label:
+        suptitle += f"\n{bairro_label}"
+    fig.suptitle(suptitle, fontsize=12, fontweight="bold", y=1.01)
     plt.tight_layout()
     plt.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close()
@@ -299,6 +301,7 @@ def plot_metrics_comparison(
     mst_metrics: dict,
     savings: dict,
     output_path: str,
+    bairro_label: str = "",
 ) -> None:
     """
     Gráfico de barras comparando as métricas da rota AGM vs rota sequencial.
@@ -347,8 +350,8 @@ def plot_metrics_comparison(
         ax.spines["right"].set_visible(False)
 
     fig.suptitle(
-        "Comparação de Métricas: Rota AGM vs Rota Sequencial\n"
-        "Sistema de Coleta Seletiva — Heliópolis, Belo Horizonte (MG)",
+        f"Comparação de Métricas: Rota AGM vs Rota Sequencial\n"
+        f"Sistema de Coleta Seletiva — {bairro_label}",
         fontsize=12, fontweight="bold", y=1.02,
     )
     plt.tight_layout()

@@ -3,9 +3,8 @@ Módulo: visualizer_map.py
 Gera o mapa interativo (HTML) com Folium:
 - Pontos de coleta com marcadores coloridos por tipo
 - Grafo completo (todas as arestas)
-- AGM do Kruskal
-- AGM do Prim
-- Rota sequencial (baseline)
+- AGM do Kruskal e do Prim (rotas pelas ruas reais via OSMnx)
+- Rota sequencial (baseline, pelas ruas)
 - LayerControl para o professor ativar/desativar cada camada
 """
 
@@ -40,28 +39,52 @@ def _point_by_id(points: list[dict], pid: str) -> dict:
     raise KeyError(f"Ponto {pid} não encontrado")
 
 
-def create_base_map(points: list[dict]) -> folium.Map:
-    """Cria o mapa base centrado em Heliópolis."""
+def _segment_coords(pu: dict, pv: dict, G_streets) -> list:
+    """
+    Retorna a lista de coordenadas [lat, lon] para o segmento entre pu e pv.
+    Usa roteamento real pelas ruas se G_streets e osm_node disponíveis;
+    caso contrário, linha reta.
+    """
+    if G_streets is not None and "osm_node" in pu and "osm_node" in pv:
+        from router import get_route_coords
+        return get_route_coords(G_streets, pu["osm_node"], pv["osm_node"])
+    return [[pu["latitude"], pu["longitude"]], [pv["latitude"], pv["longitude"]]]
+
+
+def create_base_map(points: list[dict], bairro_label: str = "") -> folium.Map:
+    """Cria o mapa base centrado no bairro configurado."""
     lat, lon = _centroid(points)
-    return folium.Map(location=[lat, lon], zoom_start=15, tiles="OpenStreetMap")
+    m = folium.Map(location=[lat, lon], zoom_start=15, tiles="OpenStreetMap")
+    if bairro_label:
+        title_html = (
+            f'<div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);'
+            f'z-index:1000;background:white;padding:6px 14px;border-radius:6px;'
+            f'border:1px solid #CCC;font-size:14px;font-weight:bold;box-shadow:1px 1px 4px rgba(0,0,0,.2)">'
+            f'{bairro_label}</div>'
+        )
+        m.get_root().html.add_child(folium.Element(title_html))
+    return m
 
 
 def add_points_layer(m: folium.Map, points: list[dict]) -> None:
-    """Adiciona marcadores circulares para cada ponto de coleta."""
+    """
+    Adiciona marcadores circulares para cada ponto de coleta.
+    Usa posição snapped (sobre a rua) se disponível; caso contrário, coord original.
+    """
     layer = folium.FeatureGroup(name="Pontos de Coleta", show=True)
 
     for p in points:
         cor = TIPO_CORES_FOLIUM.get(p["tipo"], COR_PADRAO_FOLIUM)
+        lat = p.get("snapped_lat", p["latitude"])
+        lon = p.get("snapped_lon", p["longitude"])
         popup_html = (
             f"<b>{p['nome']}</b><br>"
             f"ID: {p['id']}<br>"
             f"Tipo: {p['tipo'].capitalize()}<br>"
-            f"Lat: {p['latitude']}<br>"
-            f"Lon: {p['longitude']}<br>"
             f"<i>{p['descricao']}</i>"
         )
         CircleMarker(
-            location=[p["latitude"], p["longitude"]],
+            location=[lat, lon],
             radius=10,
             color=cor,
             fill=True,
@@ -79,7 +102,7 @@ def add_complete_graph_layer(
     distance_matrix: dict[tuple, int],
     points: list[dict],
 ) -> None:
-    """Adiciona todas as arestas do grafo completo (finas e cinza)."""
+    """Adiciona todas as arestas do grafo completo (finas e cinza, linha reta)."""
     layer = folium.FeatureGroup(name="Grafo Completo (todas as arestas)", show=False)
 
     seen = set()
@@ -109,13 +132,15 @@ def add_mst_layer(
     points: list[dict],
     algo_name: str,
     color: str,
+    G_streets=None,
 ) -> None:
     """
-    Adiciona as arestas da AGM ao mapa.
+    Adiciona as arestas da AGM ao mapa, seguindo as ruas reais se G_streets for passado.
 
     Parâmetros:
-        algo_name: nome do algoritmo para a legenda ("Kruskal" ou "Prim")
-        color:     cor das linhas ("#1B5E20" para Kruskal, "#0D47A1" para Prim)
+        algo_name: "Kruskal" ou "Prim"
+        color:     cor da linha ("#1B5E20" para Kruskal, "#0D47A1" para Prim)
+        G_streets: grafo OSMnx (opcional) para roteamento pelas ruas
     """
     total_weight = sum(w for w, _, _ in mst_edges)
     layer = folium.FeatureGroup(
@@ -126,12 +151,13 @@ def add_mst_layer(
     for weight, u, v in mst_edges:
         pu = _point_by_id(points, u)
         pv = _point_by_id(points, v)
+        coords = _segment_coords(pu, pv, G_streets)
 
         PolyLine(
-            locations=[[pu["latitude"], pu["longitude"]], [pv["latitude"], pv["longitude"]]],
+            locations=coords,
             color=color,
             weight=5,
-            opacity=0.8,
+            opacity=0.85,
             tooltip=f"AGM {algo_name}: {u} ↔ {v} ({weight} m)",
         ).add_to(layer)
 
@@ -142,13 +168,13 @@ def add_naive_route_layer(
     m: folium.Map,
     points: list[dict],
     distance_matrix: dict[tuple, int],
+    G_streets=None,
 ) -> None:
     """
-    Adiciona a rota sequencial (ingênua) ao mapa como linha tracejada laranja.
-    Rota: P01 → P02 → ... → P10 → P01
+    Adiciona a rota sequencial ao mapa como linha tracejada laranja,
+    seguindo as ruas reais se G_streets for passado.
     """
     ids = [p["id"] for p in points]
-    total = 0
     layer = folium.FeatureGroup(name="Rota Sequencial (baseline)", show=False)
 
     n = len(ids)
@@ -158,13 +184,13 @@ def add_naive_route_layer(
         pu = _point_by_id(points, u)
         pv = _point_by_id(points, v)
         weight = distance_matrix.get((u, v), distance_matrix.get((v, u), 0))
-        total += weight
+        coords = _segment_coords(pu, pv, G_streets)
 
         PolyLine(
-            locations=[[pu["latitude"], pu["longitude"]], [pv["latitude"], pv["longitude"]]],
+            locations=coords,
             color="#E65100",
             weight=4,
-            opacity=0.7,
+            opacity=0.75,
             dash_array="8 4",
             tooltip=f"Sequencial: {u} → {v} ({weight} m)",
         ).add_to(layer)
