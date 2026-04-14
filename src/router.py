@@ -37,7 +37,7 @@ def download_or_load_street_network(points: list[dict], cache_path: str):
     print(f"  Baixando malha viária do OpenStreetMap...")
     print(f"  Centro: ({center[0]:.4f}, {center[1]:.4f}) | raio: 1.500 m")
 
-    G = ox.graph_from_point(center, dist=1500, network_type="drive", simplify=True)
+    G = ox.graph_from_point(center, dist=2500, network_type="drive", simplify=True)
     ox.save_graphml(G, cache_path)
     print(f"  Malha salva em cache: {os.path.basename(cache_path)}")
     return G
@@ -60,6 +60,63 @@ def snap_points_to_network(G, points: list[dict]) -> list[dict]:
         p["snapped_lon"] = G.nodes[node]["x"]
 
     return points
+
+
+def build_distance_matrix_from_network(G, points: list[dict]):
+    """
+    Calcula a matriz de distâncias usando o grafo OSMnx já baixado.
+
+    Garante que MST e visualização usem a mesma fonte de dados —
+    elimina inconsistências entre OSRM e OSMnx.
+
+    Usa nx.shortest_path com weight="length" (metros).
+    Fallback para grafo não-dirigido se não houver caminho no dirigido.
+    """
+    import pandas as pd
+
+    ids   = [p["id"] for p in points]
+    n     = len(ids)
+    matriz = {i: {j: 0 for j in ids} for i in ids}
+    G_und  = None  # criado sob demanda
+
+    total = n * (n - 1) // 2
+    par   = 0
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            par += 1
+            u_node = points[i]["osm_node"]
+            v_node = points[j]["osm_node"]
+            dist   = None
+
+            try:
+                path = nx.shortest_path(G, u_node, v_node, weight="length")
+                dist = int(round(sum(
+                    G[path[k]][path[k + 1]][0].get("length", 0)
+                    for k in range(len(path) - 1)
+                )))
+            except (nx.NetworkXNoPath, nx.NodeNotFound):
+                pass
+
+            if dist is None:
+                if G_und is None:
+                    G_und = ox.convert.to_undirected(G)
+                try:
+                    path = nx.shortest_path(G_und, u_node, v_node, weight="length")
+                    dist = int(round(sum(
+                        G_und[path[k]][path[k + 1]].get("length", 0)
+                        for k in range(len(path) - 1)
+                    )))
+                except (nx.NetworkXNoPath, nx.NodeNotFound):
+                    dist = 0
+                    print(f"  [!] Sem rota: {ids[i]} ↔ {ids[j]}")
+
+            matriz[ids[i]][ids[j]] = dist
+            matriz[ids[j]][ids[i]] = dist
+            print(f"  [{par:>2}/{total}] {ids[i]} ↔ {ids[j]}: {dist} m")
+
+    print(f"  [OK] Matriz {n}×{n} calculada via OSMnx.")
+    return pd.DataFrame(matriz, index=ids, columns=ids)
 
 
 def get_route_coords(G, node_u: int, node_v: int) -> list[tuple]:

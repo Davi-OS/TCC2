@@ -4,17 +4,18 @@ Busca distâncias reais de ruas usando a API pública do OSRM
 (Open Source Routing Machine — baseado no OpenStreetMap).
 
 API utilizada: http://router.project-osrm.org (gratuita, sem chave)
+Endpoint: /table/v1/driving/ — retorna matriz N×N em uma única requisição
 Modo: "driving" (distância por vias, equivale ao trajeto de caminhão)
 
 Execução:
     python3 src/data_fetcher.py
 
 O script:
-  1. Lê os pontos de data/pontos_coleta.csv
-  2. Faz uma requisição para cada par único (45 requisições para 10 pontos)
-  3. Salva a nova matriz em data/matriz_distancias.csv (sobrescreve a manual)
+  1. Lê os pontos de config.toml (via config_loader)
+  2. Faz UMA requisição ao endpoint /table para obter toda a matriz
+  3. Salva em cache/{slug}/matriz_distancias.csv
 
-Tempo estimado: ~2 minutos (0.5s de pausa entre requisições).
+Tempo estimado: ~2-3 segundos (1 requisição para N pontos).
 Requer conexão com a internet.
 """
 
@@ -25,106 +26,93 @@ import requests
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(__file__))
-from data_loader import load_points
 
 
-OSRM_URL = "http://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}"
-PAUSA_ENTRE_CHAMADAS = 0.6  # segundos — evita sobrecarga da API pública
-
-
-def buscar_distancia_osrm(lat1: float, lon1: float, lat2: float, lon2: float) -> int | None:
-    """
-    Consulta o OSRM e retorna a distância em metros (inteiro).
-
-    Retorna None se a requisição falhar ou o OSRM não encontrar rota.
-    """
-    url = OSRM_URL.format(lat1=lat1, lon1=lon1, lat2=lat2, lon2=lon2)
-    try:
-        resposta = requests.get(url, timeout=10)
-        dados = resposta.json()
-        if dados.get("code") == "Ok":
-            distancia_m = dados["routes"][0]["distance"]
-            return int(round(distancia_m))
-        else:
-            print(f"    [OSRM] Código inesperado: {dados.get('code')}")
-            return None
-    except requests.exceptions.Timeout:
-        print("    [ERRO] Timeout — o servidor OSRM demorou demais.")
-        return None
-    except Exception as e:
-        print(f"    [ERRO] {e}")
-        return None
+OSRM_TABLE_URL = "http://router.project-osrm.org/table/v1/driving/{coords}?annotations=distance"
+MAX_TENTATIVAS = 3
 
 
 def construir_matriz_osrm(points: list[dict]) -> pd.DataFrame:
     """
-    Constrói a matriz de distâncias completa consultando o OSRM.
+    Constrói a matriz de distâncias completa em UMA única requisição ao OSRM.
 
-    Faz apenas o triângulo superior (45 pares para 10 pontos) e
-    espelha para o triângulo inferior (matriz simétrica).
+    Usa o endpoint /table/v1/ que retorna uma matriz N×N diretamente,
+    em vez de fazer N*(N-1)/2 chamadas individuais ao /route.
 
     Retorna um DataFrame quadrado com IDs dos pontos como índice e colunas.
     """
-    ids = [p["id"] for p in points]
-    n = len(ids)
-    total_pares = n * (n - 1) // 2
+    ids    = [p["id"] for p in points]
+    n      = len(ids)
+    coords = ";".join(f"{p['longitude']},{p['latitude']}" for p in points)
+    url    = OSRM_TABLE_URL.format(coords=coords)
 
-    # Inicializa a matriz com zeros
+    dados = None
+    for tentativa in range(1, MAX_TENTATIVAS + 1):
+        try:
+            resposta = requests.get(url, timeout=30)
+            dados    = resposta.json()
+            if dados.get("code") != "Ok":
+                raise ValueError(f"OSRM retornou código inesperado: {dados.get('code')}")
+            break
+        except Exception as e:
+            print(f"  [Tentativa {tentativa}/{MAX_TENTATIVAS}] Falha: {e}")
+            if tentativa == MAX_TENTATIVAS:
+                raise
+            time.sleep(3)
+
+    raw    = dados["distances"]  # lista N×N de floats (ou None se sem rota)
     matriz = {i: {j: 0 for j in ids} for i in ids}
-
-    par_atual = 0
     falhas = []
 
     for i in range(n):
-        for j in range(i + 1, n):
-            par_atual += 1
-            u = points[i]
-            v = points[j]
-
-            distancia = buscar_distancia_osrm(
-                u["latitude"], u["longitude"],
-                v["latitude"], v["longitude"],
-            )
-
-            if distancia is not None:
-                matriz[u["id"]][v["id"]] = distancia
-                matriz[v["id"]][u["id"]] = distancia
-                print(f"  [{par_atual:>2}/{total_pares}] {u['id']} ↔ {v['id']}: {distancia} m")
+        for j in range(n):
+            if i == j:
+                continue
+            val = raw[i][j]
+            if val is None:
+                falhas.append((ids[i], ids[j]))
             else:
-                falhas.append((u["id"], v["id"]))
-                print(f"  [{par_atual:>2}/{total_pares}] {u['id']} ↔ {v['id']}: FALHOU")
-
-            time.sleep(PAUSA_ENTRE_CHAMADAS)
+                # Usa a média dos dois sentidos para garantir simetria
+                inv  = raw[j][i]
+                dist = int(round((val + (inv if inv is not None else val)) / 2))
+                matriz[ids[i]][ids[j]] = dist
 
     if falhas:
-        print(f"\n  [!] {len(falhas)} par(es) falharam: {falhas}")
-        print("  Esses pares ficaram como 0 na matriz. Preencha manualmente.")
+        print(f"  [!] {len(falhas)} par(es) sem rota encontrada: {falhas}")
+        print("  Esses pares ficaram como 0 na matriz.")
 
+    print(f"  [OK] Matriz {n}×{n} obtida em 1 requisição.")
     return pd.DataFrame(matriz, index=ids, columns=ids)
 
 
 def salvar_matriz(df: pd.DataFrame, output_path: str) -> None:
     """Salva a matriz como CSV com o ID dos pontos como índice."""
     df.to_csv(output_path)
-    print(f"\n  [OK] Matriz salva em: {output_path}")
+    print(f"  [OK] Matriz salva em: {output_path}")
 
 
 if __name__ == "__main__":
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    csv_pontos = os.path.join(base, "data", "pontos_coleta.csv")
-    csv_saida  = os.path.join(base, "data", "matriz_distancias.csv")
+    sys.path.insert(0, base)
+
+    from config_loader import load_config, get_points, get_slug
+
+    config_path = os.path.join(base, "config.toml")
+    cfg    = load_config(config_path)
+    points = get_points(cfg)
+    slug   = get_slug(cfg)
+
+    cache_dir  = os.path.join(base, "cache", slug)
+    os.makedirs(cache_dir, exist_ok=True)
+    csv_saida  = os.path.join(cache_dir, "matriz_distancias.csv")
+
+    n     = len(points)
+    total = n * (n - 1) // 2
 
     print("=" * 55)
     print("Buscando distâncias reais via OSRM (OpenStreetMap)")
     print("=" * 55)
-
-    points = load_points(csv_pontos)
-    n = len(points)
-    total = n * (n - 1) // 2
-
-    print(f"\nPontos carregados: {n}")
-    print(f"Pares a consultar: {total}")
-    print(f"Tempo estimado:    ~{int(total * PAUSA_ENTRE_CHAMADAS / 60 + 1)} minuto(s)\n")
+    print(f"\nPontos: {n} | Pares: {total} | Requisições: 1\n")
 
     df_matriz = construir_matriz_osrm(points)
 
@@ -133,4 +121,4 @@ if __name__ == "__main__":
 
     salvar_matriz(df_matriz, csv_saida)
 
-    print("\nPróximo passo: execute 'python3 main.py' para rodar a análise com os dados reais.")
+    print("\nPróximo passo: execute 'python3 main.py' para rodar a análise.")

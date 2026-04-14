@@ -9,7 +9,7 @@ ou gerada automaticamente via OSRM na primeira execução (requer internet).
 import os
 import tomllib
 
-from data_fetcher import construir_matriz_osrm, salvar_matriz
+import pandas as pd
 from data_loader import load_distance_matrix
 
 
@@ -39,12 +39,14 @@ def get_slug(cfg: dict) -> str:
     return cfg["bairro"]["slug"]
 
 
-def load_or_build_matrix(cfg: dict, base_dir: str) -> dict:
+def load_or_build_matrix(cfg: dict, base_dir: str, G_streets=None, points_snapped=None) -> dict:
     """
-    Carrega a matriz de distâncias do cache ou gera via OSRM.
+    Carrega a matriz de distâncias do cache ou gera via OSMnx.
+
+    Usa a mesma malha viária da visualização — garante consistência entre
+    as distâncias usadas no Kruskal/Prim e as rotas desenhadas no mapa.
 
     Cache em: cache/{slug}/matriz_distancias.csv
-    Na primeira execução (sem cache) requer conexão com a internet.
     """
     slug = get_slug(cfg)
     cache_dir = os.path.join(base_dir, "cache", slug)
@@ -55,12 +57,21 @@ def load_or_build_matrix(cfg: dict, base_dir: str) -> dict:
         print(f"  Matriz carregada do cache: cache/{slug}/matriz_distancias.csv")
         return load_distance_matrix(cache_path)
 
-    print("  Nenhum cache encontrado. Gerando matriz via OSRM (requer internet)...")
-    points = get_points(cfg)
-    n = len(points)
-    total = n * (n - 1) // 2
-    print(f"  Pontos: {n} | Pares a consultar: {total}")
+    print("  Nenhum cache encontrado. Gerando matriz via OSMnx...")
+    from router import (
+        download_or_load_street_network,
+        snap_points_to_network,
+        build_distance_matrix_from_network,
+    )
 
-    df = construir_matriz_osrm(points)
-    salvar_matriz(df, cache_path)
+    points = points_snapped if points_snapped is not None else get_points(cfg)
+
+    if G_streets is None:
+        cache_streets = os.path.join(cache_dir, "street_network.graphml")
+        G_streets = download_or_load_street_network(points, cache_streets)
+        points = snap_points_to_network(G_streets, points)
+
+    df = build_distance_matrix_from_network(G_streets, points)
+    df.to_csv(cache_path)
+    print(f"  [OK] Matriz salva em: cache/{slug}/matriz_distancias.csv")
     return load_distance_matrix(cache_path)

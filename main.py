@@ -76,25 +76,32 @@ def main():
     print(bairro_label)
     print("=" * 60)
 
-    # ─── 1. Carregar dados ────────────────────────────────────────
-    print("\n[1/6] Carregando dados...")
-    matrix = load_or_build_matrix(cfg, BASE_DIR)
+    # ─── 1. Malha viária real (OSMnx) ────────────────────────────
+    print("\n[1/7] Baixando malha viária (OpenStreetMap)...")
+    CACHE_STREETS = os.path.join(BASE_DIR, "cache", slug, "street_network.graphml")
+    G_streets = download_or_load_street_network(points, CACHE_STREETS)
+    points    = snap_points_to_network(G_streets, points)
+    print(f"  Nós na malha: {G_streets.number_of_nodes()} | Arestas: {G_streets.number_of_edges()}")
+
+    # ─── 2. Carregar dados ────────────────────────────────────────
+    print("\n[2/7] Carregando dados...")
+    matrix = load_or_build_matrix(cfg, BASE_DIR, G_streets=G_streets, points_snapped=points)
     edges  = build_edge_list(matrix)
     nodes  = [p["id"] for p in points]
 
     print(f"  Pontos de coleta:  {len(points)}")
     print(f"  Arestas no grafo:  {len(edges)}")
 
-    # ─── 2. Construir grafo ───────────────────────────────────────
-    print("\n[2/6] Construindo estruturas de grafo...")
+    # ─── 3. Construir grafo ───────────────────────────────────────
+    print("\n[3/7] Construindo estruturas de grafo...")
     G   = build_networkx_graph(points, matrix)
     adj = get_adjacency_list(matrix)
 
     print(f"  Vértices: {G.number_of_nodes()} | Arestas: {G.number_of_edges()}")
     print(f"  Grafo conexo: {nx.is_connected(G)}")
 
-    # ─── 3. Executar algoritmos ───────────────────────────────────
-    print("\n[3/6] Executando algoritmos de AGM...")
+    # ─── 4. Executar algoritmos ───────────────────────────────────
+    print("\n[4/7] Executando algoritmos de AGM...")
 
     mst_k, peso_k, steps_k = kruskal_mst(edges, nodes)
     print(f"  Kruskal — peso AGM: {peso_k} m ({peso_k/1000:.3f} km)")
@@ -109,8 +116,8 @@ def main():
     )
     print(f"  [VALIDAÇÃO OK] Ambos os algoritmos produziram AGM com {peso_k} m")
 
-    # ─── 4. Calcular métricas ─────────────────────────────────────
-    print("\n[4/6] Calculando métricas operacionais...")
+    # ─── 5. Calcular métricas ─────────────────────────────────────
+    print("\n[5/7] Calculando métricas operacionais...")
     dist_agm   = mst_route_distance(mst_k)
     dist_naive = naive_route_distance(points, matrix)
 
@@ -120,8 +127,8 @@ def main():
 
     print_metrics_table(naive_m, mst_m, savings)
 
-    # ─── 5. Gerar visualizações estáticas ─────────────────────────
-    print("\n[5/7] Gerando gráficos...")
+    # ─── 6. Gerar visualizações estáticas ─────────────────────────
+    print("\n[6/7] Gerando gráficos...")
 
     plot_complete_graph(
         G,
@@ -154,13 +161,6 @@ def main():
         bairro_label=bairro_label,
     )
 
-    # ─── 6. Malha viária real (OSMnx) ────────────────────────────
-    print("\n[6/7] Baixando malha viária (OpenStreetMap)...")
-    CACHE_STREETS = os.path.join(BASE_DIR, "cache", slug, "street_network.graphml")
-    G_streets = download_or_load_street_network(points, CACHE_STREETS)
-    points    = snap_points_to_network(G_streets, points)
-    print(f"  Nós na malha: {G_streets.number_of_nodes()} | Arestas: {G_streets.number_of_edges()}")
-
     # ─── 7. Gerar mapa interativo ─────────────────────────────────
     print("\n[7/7] Gerando mapa interativo...")
     m = create_base_map(points, bairro_label=bairro_label)
@@ -182,6 +182,7 @@ def main():
     print(f"  outputs/{slug}/grafos/prim_passos.png")
     print(f"  outputs/{slug}/grafos/comparacao_metricas.png")
     print(f"  outputs/{slug}/mapas/mapa_{slug}.html")
+    print(f"  (Matriz e rotas calculadas via OSMnx — fonte única de dados)")
     print("=" * 60)
 
 

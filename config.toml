@@ -1,88 +1,88 @@
 # Configuração do bairro para análise de coleta seletiva com AGM.
 # Para testar outro bairro: altere esta seção e execute python3 main.py
-# A matriz de distâncias será gerada automaticamente via OSRM na 1ª execução.
+# A matriz de distâncias será gerada automaticamente via OSMnx na 1ª execução.
 
 [bairro]
-nome   = "Heliópolis"
+nome   = "Barreiro"
 cidade = "Belo Horizonte, MG"
-slug   = "heliopolis"   # usado em nomes de pasta e arquivo (sem acentos)
+slug   = "barreiro"   # usado em nomes de pasta e arquivo (sem acentos)
 
 [[bairro.pontos]]
 id        = "P01"
-nome      = "Praça de Heliópolis"
-latitude  = -20.0540
-longitude = -44.0520
-tipo      = "praça"
-descricao = "Centro do bairro - ponto de referência principal"
+nome      = "UPA Barreiro"
+latitude  = -19.995976
+longitude = -44.020332
+tipo      = "saude"
+descricao = "Unidade de Pronto Atendimento do Barreiro — Rua Aurélio Lopes, Diamante"
 
 [[bairro.pontos]]
 id        = "P02"
-nome      = "UPA Barreiro"
-latitude  = -20.0510
-longitude = -44.0550
-tipo      = "saude"
-descricao = "Unidade de Pronto Atendimento - alta circulação de pessoas"
+nome      = "Escola Municipal CIAC Lucas Monteiro Machado"
+latitude  = -19.999493
+longitude = -44.026524
+tipo      = "escola"
+descricao = "Escola municipal na região do Barreiro — grande geração de recicláveis"
 
 [[bairro.pontos]]
 id        = "P03"
-nome      = "Escola Municipal Pe. João"
-latitude  = -20.0570
-longitude = -44.0490
-tipo      = "escola"
-descricao = "Escola municipal - geração de resíduos recicláveis"
+nome      = "Praça Orlando Camargos"
+latitude  = -19.988543
+longitude = -44.020078
+tipo      = "praça"
+descricao = "Praça pública no bairro Diamante — ponto de encontro comunitário"
 
 [[bairro.pontos]]
 id        = "P04"
-nome      = "Mercado Popular Heliópolis"
-latitude  = -20.0520
-longitude = -44.0480
-tipo      = "comercio"
-descricao = "Mercado local - grande geração de embalagens"
+nome      = "Praça José A. de Moura"
+latitude  = -19.980295
+longitude = -44.028572
+tipo      = "praça"
+descricao = "Praça pública na região do Barreiro — área de lazer e convivência"
 
 [[bairro.pontos]]
 id        = "P05"
-nome      = "Igreja Nossa Senhora Aparecida"
-latitude  = -20.0560
-longitude = -44.0560
+nome      = "Igreja Batista do Tirol"
+latitude  = -19.988041
+longitude = -44.037571
 tipo      = "religioso"
-descricao = "Igreja - ponto de encontro comunitário"
+descricao = "Igreja no bairro Tirol — ponto de encontro comunitário"
 
 [[bairro.pontos]]
 id        = "P06"
-nome      = "Terminal de Ônibus Barreiro"
-latitude  = -20.0490
-longitude = -44.0520
-tipo      = "transporte"
-descricao = "Terminal de transporte público - alta circulação"
+nome      = "Centro de Saúde Barreiro"
+latitude  = -19.995849
+longitude = -44.005360
+tipo      = "saude"
+descricao = "Unidade básica de saúde — Praça Modestino Sales Barbosa, Barreiro"
 
 [[bairro.pontos]]
 id        = "P07"
-nome      = "Centro Comunitário Heliópolis"
-latitude  = -20.0590
-longitude = -44.0530
-tipo      = "comunitario"
-descricao = "Centro comunitário - reuniões e eventos locais"
+nome      = "Escola Municipal Professora Isaura Santos"
+latitude  = -19.989247
+longitude = -44.009310
+tipo      = "escola"
+descricao = "Escola municipal na região do Barreiro — geração de recicláveis"
 
 [[bairro.pontos]]
 id        = "P08"
-nome      = "Posto de Saúde Heliópolis"
-latitude  = -20.0530
-longitude = -44.0500
-tipo      = "saude"
-descricao = "Unidade básica de saúde - equipamento público"
+nome      = "Supermercado BH Barreiro"
+latitude  = -19.986289
+longitude = -44.016406
+tipo      = "comercio"
+descricao = "Supermercado BH na região do Barreiro — principal gerador de embalagens"
 
 [[bairro.pontos]]
 id        = "P09"
-nome      = "Quadra Poliesportiva"
-latitude  = -20.0550
-longitude = -44.0490
-tipo      = "esporte"
-descricao = "Área de lazer e esporte - grande circulação nos fins de semana"
+nome      = "Igreja Evangélica Quadrangular"
+latitude  = -19.977550
+longitude = -44.025516
+tipo      = "religioso"
+descricao = "Igreja no Barreiro — ponto de referência comunitária"
 
 [[bairro.pontos]]
 id        = "P10"
-nome      = "Supermercado BH Barreiro"
-latitude  = -20.0510
-longitude = -44.0530
+nome      = "Farmácia Artesanal"
+latitude  = -19.975471
+longitude = -44.014105
 tipo      = "comercio"
-descricao = "Supermercado - principal gerador de embalagens do bairro"
+descricao = "Farmácia no Barreiro de Baixo — Rua José Brandão"
