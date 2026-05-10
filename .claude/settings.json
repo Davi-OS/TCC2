@@ -11,7 +11,10 @@
       "Bash(python3 -c ':*)",
       "Bash(curl -s --data '[out:json][timeout:30]; \\( node[\"name\"~\"Terminal.*Barreiro|Barreiro.*Terminal\"]\\(around:5000,-19.9750,-44.0200\\); way[\"name\"~\"Terminal.*Barreiro|Barreiro.*Terminal\"]\\(around:5000,-19.9750,-44.0200\\); node[\"amenity\"=\"bus_station\"]\\(around:3000,-19.9750,-44.0200\\); way[\"amenity\"=\"bus_station\"]\\(around:3000,-19.9750,-44.0200\\); \\); out center body; ' \"https://overpass-api.de/api/interpreter\" -H \"User-Agent: TCC-AGM-BH/1.0\")",
       "Bash(python3 -c \" import sys, json data = json.load\\(sys.stdin\\) for el in data.get\\('elements', []\\): tags = el.get\\('tags', {}\\) name = tags.get\\('name', '\\(sem nome\\)'\\) lat = el.get\\('lat'\\) or \\(el.get\\('center', {}\\) or {}\\).get\\('lat'\\) lon = el.get\\('lon'\\) or \\(el.get\\('center', {}\\) or {}\\).get\\('lon'\\) if not lat: continue typ = tags.get\\('amenity',''\\) or '?' print\\(f'{typ:22s} | {lat:.6f}, {lon:.6f} | {name}'\\) \")",
-      "WebFetch(domain:nominatim.openstreetmap.org)"
+      "WebFetch(domain:nominatim.openstreetmap.org)",
+      "Bash(grep -n \"latitude\\\\|longitude\\\\|cep\\\\|CEP\" /home/davi/Documents/TCC/src/*.py /home/davi/Documents/TCC/main.py)",
+      "Bash(find /home/davi/Documents/TCC -type f \\\\\\( -name \"*.py\" -o -name \"*.toml\" \\\\\\) -exec wc -l {} +)",
+      "Bash(grep -n \"def \\\\|class \" /home/davi/Documents/TCC/main.py /home/davi/Documents/TCC/src/*.py)"
     ]
   }
 }

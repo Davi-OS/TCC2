@@ -48,12 +48,12 @@ def plot_complete_graph(G: nx.Graph, output_path: str, bairro_label: str = "") -
     pos = _get_pos(G)
     node_colors = _node_colors(G)
 
-    nx.draw_networkx_edges(G, pos, alpha=0.3, edge_color="#BDBDBD", ax=ax)
-    nx.draw_networkx_nodes(G, pos, node_size=800, node_color=node_colors, ax=ax)
-    nx.draw_networkx_labels(G, pos, font_size=8, font_weight="bold", ax=ax)
+    nx.draw_networkx_edges(G, pos, width=4.0, alpha=0.4, edge_color="#BDBDBD", ax=ax)
+    nx.draw_networkx_nodes(G, pos, node_size=1200, node_color=node_colors, ax=ax)
+    nx.draw_networkx_labels(G, pos, font_size=11, font_weight="bold", ax=ax)
 
     edge_labels = {(u, v): f"{d['weight']}m" for u, v, d in G.edges(data=True)}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels, font_size=6, alpha=0.7, ax=ax)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels, font_size=9, alpha=0.7, ax=ax)
 
     # Legenda de tipos
     patches = [
@@ -61,11 +61,11 @@ def plot_complete_graph(G: nx.Graph, output_path: str, bairro_label: str = "") -
         for tipo, cor in TIPO_CORES.items()
         if any(G.nodes[n]["tipo"] == tipo for n in G.nodes())
     ]
-    ax.legend(handles=patches, loc="lower left", fontsize=8, title="Tipo de ponto")
+    ax.legend(handles=patches, loc="lower left", fontsize=10, title="Tipo de ponto")
 
     ax.set_title(
         f"Grafo Completo — Sistema de Coleta Seletiva Proposto\n{bairro_label}",
-        fontsize=13, fontweight="bold", pad=15,
+        fontsize=14, fontweight="bold", pad=15,
     )
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
@@ -95,21 +95,21 @@ def plot_mst_highlighted(
     mst_only = [(u, v) for u, v in G.edges() if (u, v) in mst_edge_set]
 
     nx.draw_networkx_edges(G, pos, edgelist=non_mst_edges, alpha=0.15, edge_color="#BDBDBD", ax=ax)
-    nx.draw_networkx_edges(G, pos, edgelist=mst_only, width=3.5, edge_color="#1B5E20", ax=ax)
-    nx.draw_networkx_nodes(G, pos, node_size=900, node_color=node_colors, ax=ax)
-    nx.draw_networkx_labels(G, pos, font_size=9, font_weight="bold", ax=ax)
+    nx.draw_networkx_edges(G, pos, edgelist=mst_only, width=5.5, edge_color="#1B5E20", ax=ax)
+    nx.draw_networkx_nodes(G, pos, node_size=1300, node_color=node_colors, ax=ax)
+    nx.draw_networkx_labels(G, pos, font_size=12, font_weight="bold", ax=ax)
 
     mst_weight = sum(w for w, _, _ in mst_edges)
     mst_label = {(u, v): f"{w}m" for w, u, v in mst_edges}
     mst_label.update({(v, u): f"{w}m" for w, u, v in mst_edges})
     mst_edge_labels = {(u, v): mst_label[(u, v)] for u, v in mst_only if (u, v) in mst_label}
-    nx.draw_networkx_edge_labels(G, pos, mst_edge_labels, font_size=8, font_color="#1B5E20", ax=ax)
+    nx.draw_networkx_edge_labels(G, pos, mst_edge_labels, font_size=11, font_color="#1B5E20", ax=ax)
 
     titulo = f"Árvore Geradora Mínima — Algoritmo de {algo_name}\n"
     titulo += f"Peso total da AGM: {mst_weight} m  |  Rota estimada: {mst_weight * 2} m"
     if bairro_label:
         titulo += f"\n{bairro_label}"
-    ax.set_title(titulo, fontsize=13, fontweight="bold", pad=15)
+    ax.set_title(titulo, fontsize=14, fontweight="bold", pad=15)
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
     ax.grid(True, alpha=0.2)
@@ -118,7 +118,7 @@ def plot_mst_highlighted(
         mpatches.Patch(color="#1B5E20", label=f"AGM — {algo_name}"),
         mpatches.Patch(color="#BDBDBD", label="Arestas não utilizadas"),
     ]
-    ax.legend(handles=legend_handles, loc="lower left", fontsize=9)
+    ax.legend(handles=legend_handles, loc="lower left", fontsize=11)
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=300)
@@ -184,23 +184,23 @@ def plot_kruskal_steps(
             (ra, rb), (rb2, ra2) = parse_edge(rej_str)
             rej_list = [(ra, rb)] if (ra, rb) in G.edges() else [(rb, ra)] if (rb, ra) in G.edges() else []
             if rej_list:
-                nx.draw_networkx_edges(G, pos, edgelist=rej_list, width=2, edge_color="#F44336", alpha=0.6, ax=ax)
+                nx.draw_networkx_edges(G, pos, edgelist=rej_list, width=4, edge_color="#F44336", alpha=0.6, ax=ax)
 
         prev_mst_edges = [(a, b) for _, a, b in accumulated_mst[:-1]]
         prev_mst_edges = [(a, b) if (a, b) in G.edges() else (b, a) for a, b in prev_mst_edges]
         if prev_mst_edges:
-            nx.draw_networkx_edges(G, pos, edgelist=prev_mst_edges, width=2.5, edge_color="#4CAF50", ax=ax)
+            nx.draw_networkx_edges(G, pos, edgelist=prev_mst_edges, width=4.5, edge_color="#4CAF50", ax=ax)
 
         new_edge = [(u, v)] if (u, v) in G.edges() else [(v, u)]
-        nx.draw_networkx_edges(G, pos, edgelist=new_edge, width=4, edge_color="#1B5E20", ax=ax)
+        nx.draw_networkx_edges(G, pos, edgelist=new_edge, width=6, edge_color="#1B5E20", ax=ax)
 
-        nx.draw_networkx_nodes(G, pos, node_size=400, node_color=node_colors, ax=ax)
-        nx.draw_networkx_labels(G, pos, font_size=7, font_weight="bold", ax=ax)
+        nx.draw_networkx_nodes(G, pos, node_size=650, node_color=node_colors, ax=ax)
+        nx.draw_networkx_labels(G, pos, font_size=9, font_weight="bold", ax=ax)
 
         ax.set_title(
             f"Passo {idx+1}: ACEITA {step['aresta']} ({weight}m)\n"
             f"Comp. restantes: {step['componentes_restantes']}",
-            fontsize=8, pad=5,
+            fontsize=9, pad=5,
         )
         ax.set_axis_off()
 
@@ -212,9 +212,9 @@ def plot_kruskal_steps(
     suptitle += "(Verde escuro = nova aresta aceita | Verde claro = AGM acumulada | Vermelho = aresta rejeitada)"
     if bairro_label:
         suptitle += f"\n{bairro_label}"
-    fig.suptitle(suptitle, fontsize=12, fontweight="bold", y=1.01)
+    fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.01)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.savefig(output_path, dpi=250, bbox_inches="tight")
     plt.close()
     print(f"  [OK] {output_path}")
 
@@ -270,15 +270,15 @@ def plot_prim_steps(
         new_edge = [(u, v)] if (u, v) in G.edges() else [(v, u)]
 
         nx.draw_networkx_edges(G, pos, edgelist=other_edges, alpha=0.1, edge_color="#BDBDBD", ax=ax)
-        nx.draw_networkx_edges(G, pos, edgelist=acc_edges, width=2.5, edge_color="#4CAF50", ax=ax)
-        nx.draw_networkx_edges(G, pos, edgelist=new_edge, width=4, edge_color="#1B5E20", ax=ax)
-        nx.draw_networkx_nodes(G, pos, node_size=400, node_color=colors, ax=ax)
-        nx.draw_networkx_labels(G, pos, font_size=7, font_weight="bold", ax=ax)
+        nx.draw_networkx_edges(G, pos, edgelist=acc_edges, width=4.5, edge_color="#4CAF50", ax=ax)
+        nx.draw_networkx_edges(G, pos, edgelist=new_edge, width=6, edge_color="#1B5E20", ax=ax)
+        nx.draw_networkx_nodes(G, pos, node_size=650, node_color=colors, ax=ax)
+        nx.draw_networkx_labels(G, pos, font_size=9, font_weight="bold", ax=ax)
 
         ax.set_title(
             f"Passo {idx+1}: adiciona {v} via {step['aresta']} ({weight}m)\n"
             f"Visitados: {sorted(visited)}",
-            fontsize=7, pad=5,
+            fontsize=9, pad=5,
         )
         ax.set_axis_off()
 
@@ -289,9 +289,9 @@ def plot_prim_steps(
     suptitle += "(Verde escuro = novo nó adicionado | Verde claro = AGM acumulada | Cinza = não visitado)"
     if bairro_label:
         suptitle += f"\n{bairro_label}"
-    fig.suptitle(suptitle, fontsize=12, fontweight="bold", y=1.01)
+    fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.01)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.savefig(output_path, dpi=250, bbox_inches="tight")
     plt.close()
     print(f"  [OK] {output_path}")
 
@@ -305,14 +305,13 @@ def plot_metrics_comparison(
 ) -> None:
     """
     Gráfico de barras comparando as métricas da rota AGM vs rota sequencial.
-    4 subgráficos: distância, custo, CO₂, tempo.
+    3 subgráficos: distância, custo, tempo.
     """
-    fig, axes = plt.subplots(1, 4, figsize=(16, 6))
+    fig, axes = plt.subplots(1, 3, figsize=(13, 6))
 
     metricas = [
         ("Distância (km)",   "distancia_km",           "km"),
         ("Custo (R$)",        "custo_combustivel_brl",   "R$"),
-        ("CO₂ (kg)",          "co2_kg",                  "kg"),
         ("Tempo (min)",       "tempo_total_min",          "min"),
     ]
 
@@ -330,7 +329,7 @@ def plot_metrics_comparison(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() * 1.02,
                 f"{val:.2f} {unidade}",
-                ha="center", va="bottom", fontsize=9, fontweight="bold",
+                ha="center", va="bottom", fontsize=11, fontweight="bold",
             )
 
         pct = savings.get(f"reducao_{chave.split('_')[0]}_pct", None)
@@ -342,7 +341,7 @@ def plot_metrics_comparison(
                     break
 
         ax.set_title(f"{titulo}\n(redução: {savings['reducao_distancia_pct']}%)" if chave == "distancia_km" else titulo,
-                     fontsize=10, fontweight="bold")
+                     fontsize=12, fontweight="bold")
         ax.set_ylabel(unidade)
         ax.set_ylim(0, max(valores) * 1.25)
         ax.grid(axis="y", alpha=0.3)
@@ -352,7 +351,7 @@ def plot_metrics_comparison(
     fig.suptitle(
         f"Comparação de Métricas: Rota AGM vs Rota Sequencial\n"
         f"Sistema de Coleta Seletiva — {bairro_label}",
-        fontsize=12, fontweight="bold", y=1.02,
+        fontsize=14, fontweight="bold", y=1.02,
     )
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
