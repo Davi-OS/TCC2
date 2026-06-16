@@ -202,7 +202,13 @@ def plot_kruskal_steps(
             f"Comp. restantes: {step['componentes_restantes']}",
             fontsize=9, pad=5,
         )
-        ax.set_axis_off()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.patch.set_facecolor("#FAFAFA")
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_linewidth(1.5)
+            spine.set_edgecolor("#9E9E9E")
 
     # Oculta eixos extras
     for idx in range(n_steps, len(axes)):
@@ -213,6 +219,8 @@ def plot_kruskal_steps(
     if bairro_label:
         suptitle += f"\n{bairro_label}"
     fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.01)
+    fig.patch.set_linewidth(2.5)
+    fig.patch.set_edgecolor("#616161")
     plt.tight_layout()
     plt.savefig(output_path, dpi=250, bbox_inches="tight")
     plt.close()
@@ -280,7 +288,13 @@ def plot_prim_steps(
             f"Visitados: {sorted(visited)}",
             fontsize=9, pad=5,
         )
-        ax.set_axis_off()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.patch.set_facecolor("#FAFAFA")
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_linewidth(1.5)
+            spine.set_edgecolor("#9E9E9E")
 
     for idx in range(n_steps, len(axes)):
         axes[idx].set_visible(False)
@@ -290,6 +304,8 @@ def plot_prim_steps(
     if bairro_label:
         suptitle += f"\n{bairro_label}"
     fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.01)
+    fig.patch.set_linewidth(2.5)
+    fig.patch.set_edgecolor("#616161")
     plt.tight_layout()
     plt.savefig(output_path, dpi=250, bbox_inches="tight")
     plt.close()
